@@ -1,3 +1,4 @@
+
 import pygame
 # colors
 darkgreen = pygame.colordict.THECOLORS["chartreuse4"]
@@ -10,12 +11,20 @@ sand = pygame.colordict.THECOLORS["darkgoldenrod1"]
 kn = pygame.transform.scale(pygame.image.load("kn.jpg"), (14,14))
 dr = pygame.transform.scale(pygame.image.load("dr.png"), (14,14))
 
+MAX_FOOD = 10
+MAX_HEALTH = 10
+
 def get_cell_from_matrix(entity, matrix, grid):
     mtx = matrix[entity["x"]][entity["y"]]
     return grid[mtx[0]][mtx[1]]
 
 def get_cell_state(entity,matrix, grid):
     return get_cell_from_matrix(entity, matrix, grid).get("state", 0)
+
+def get_cell_data(entity,matrix, grid):
+    data = get_cell_from_matrix(entity, matrix, grid)
+
+    return (data.get("state", 0), data.get("type", ""))
 
 class Behavior(object):
 
@@ -26,10 +35,10 @@ class Behavior(object):
 
     @staticmethod
     def rest(entity):
+
         
-       
-        if entity["health"] < 100:
-            entity["health"] = entity["health"] + 1
+        if entity["food"] > 0 and entity["health"] < MAX_HEALTH:
+            entity["health"] = entity["health"] + 1      
     
     @staticmethod
     def moved(entity):
@@ -66,15 +75,47 @@ class Behavior(object):
             cell["state"] = cell["state"] - 2
             if cell["state"] <= 0:
                 cell["color"] = sand
-                
-            
+def turn(pos_, player, players, matrix):
+  
 
-    @staticmethod
-    def groom(cell):
-        pass
+    _x, _y = move(matrix, player["x"], player["y"], pos_)
+    for p in players:
+      
+        if p["id"] != player["id"] and p["x"] == _x and p["y"] == _y:
+            # Blocked
+            
+            return False
+    player["x"] = _x
+    player["y"] = _y
+    return True
+
+def move(matrix, x,y, slot):
+    _x = x
+    _y = y
+    if slot == 1:
+        _y = y-1
         
-            
+    # elif slot == 2:
+    #     _x = x-1
+    #     _y = y-1
+    elif slot == 3:
+        _x = x+1
+    # elif slot == 4:
+    #     _x = x+1
+    #     _y = y+1
+    elif slot == 5:
+        _y = y+1
+    # elif slot == 6:
+    #     _y = y-1
+    #     _x = x+1
+    elif slot == 7:
+        _x = x-1
+    # elif slot == 8:
+    #     _y = y-1
+    #     _x= x-1
 
+
+    return _x,_y
 
 
 #entity
@@ -85,8 +126,8 @@ knight1 = {
     "y": 10,
     "image": kn,
     "player":True,
-    "food": 100,
-    "health": 100,
+    "food": MAX_FOOD,
+    "health": MAX_HEALTH,
     "moves": 0,
     "total_steps": 0
 }
@@ -98,8 +139,8 @@ knight2 = {
     "y": 12,
     "image": kn,
     "player":True,
-    "food": 100,
-    "health": 100,
+    "food": MAX_FOOD,
+    "health": MAX_HEALTH,
     "moves": 0,
     "total_steps": 0
 }
@@ -111,8 +152,8 @@ dragon = {
     "y": 20,
     "image": dr,
     "player": False,
-    "food": 100,
-    "health": 100
+    "food": MAX_FOOD,
+    "health": MAX_HEALTH
 }
 
 hill = {

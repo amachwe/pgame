@@ -7,8 +7,9 @@ import events
 import math
 
 MAX_FOOD = 100
-MAX_HEALTH = 100
+MAX_HEALTH = 10
 MAX_STATE = 10
+
 
 class CategoryToOneHot(object):
     cats = {}
@@ -23,13 +24,15 @@ class CategoryToOneHot(object):
         return self.cats.get(cat)
     
 action_c = CategoryToOneHot(events.action_names)
+action_t = CategoryToOneHot(["hill", "grass", "water"])
 
 def build_reward(reward):
 
-    if reward >= 0:
+    if reward+4 > 0:
         return 1
     else:
         return 0
+   
 
 
 def dataprep():
@@ -42,19 +45,20 @@ def dataprep():
     raw_Y = []
 
     
-
-    prev_action = None
     for i in collection.find():
-        if prev_action:
-            d=[i['curr_state_food']/MAX_FOOD,i['curr_state_health']/MAX_HEALTH, i["state"]/MAX_STATE]
-            d.extend(action_c.to_one_hot(prev_action))
-            d.extend(action_c.to_one_hot(i["action"]))
-            raw_X.append(d)
-            reward = build_reward(i["reward"])
-            one_count = reward+one_count
-            raw_Y.append([reward,i["new_state"]/MAX_STATE])
-            
-        prev_action = i["action"]
+    
+        d=[i['curr_state_food']/MAX_FOOD,i['curr_state_health']/MAX_HEALTH, i["state"]/MAX_STATE#, i["x"], i["y"],
+        
+        ]
+        # i['new_state_food']/MAX_FOOD,i['new_state_health']/MAX_HEALTH, i["new_state"]/MAX_STATE, i["new_x"], i["new_y"]
+        
+        d.extend(action_c.to_one_hot(i["action"]))
+        d.extend(action_t.to_one_hot(i["type"]))
+        raw_X.append(d)
+        reward = build_reward(i["reward"])
+        one_count = reward+one_count
+        raw_Y.append(reward)
+
 
     print("Ones: ", one_count*100/len(raw_Y), "Zeroes: ", (len(raw_Y)-one_count)*100/len(raw_Y))
 
@@ -65,14 +69,16 @@ def dataprep():
 
 if __name__ == '__main__':
     raw_X, raw_Y = dataprep()
-
+    print(f"Input: {len(raw_X[0])}")
     model = tf.keras.Sequential(
         [
             tf.keras.layers.Dense(len(raw_X[0])),
-            tf.keras.layers.Dense(30),
-            tf.keras.layers.Dense(30),
-            tf.keras.layers.Dense(30),
-            tf.keras.layers.Dense(2)
+            tf.keras.layers.Dense(50),
+            tf.keras.layers.Dense(50),
+            tf.keras.layers.Dense(50),
+            tf.keras.layers.Dense(50),
+            tf.keras.layers.Dense(50),
+            tf.keras.layers.Dense(1)
         ]
     )
 
@@ -91,7 +97,7 @@ if __name__ == '__main__':
 
     model.compile(optimizer='sgd', loss=tf.keras.losses.MeanAbsoluteError(), metrics=["accuracy"])
 
-    model.fit(train_X, train_Y, epochs=20)
+    model.fit(train_X, train_Y, epochs=30)
 
     print("Result of testing: ",model.evaluate(test_X, test_Y, batch_size=20))
 

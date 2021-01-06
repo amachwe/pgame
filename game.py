@@ -2,10 +2,10 @@ import pygame, sys
 import random
 import numpy as np
 import entity as en
-from entity import Behavior as Bhev
+import events as ev
 import build as bl
 import ai 
-import player_ai
+import player_ga
 import aiohttp
 import json
 import asyncio
@@ -25,73 +25,38 @@ MAX_MOVES = 500
 
 screen = pygame.display.set_mode(size)
 
-
+VIDEO = True
 
 
 
 def draw_img(im, x,y):
     screen.blit(im,(x,y))
 
-def move(matrix, x,y, slot):
-    _x = x
-    _y = y
-    if slot == 1:
-        _y = y-1
-        
-    # elif slot == 2:
-    #     _x = x-1
-    #     _y = y-1
-    elif slot == 3:
-        _x = x+1
-    # elif slot == 4:
-    #     _x = x+1
-    #     _y = y+1
-    elif slot == 5:
-        _y = y+1
-    # elif slot == 6:
-    #     _y = y-1
-    #     _x = x+1
-    elif slot == 7:
-        _x = x-1
-    # elif slot == 8:
-    #     _y = y-1
-    #     _x= x-1
 
 
-    return _x,_y
-
-def make_video(screen,game_id):
+def make_video(screen,game_id, interval=100):
 
     _image_num = 0
     import os
 
     os.mkdir(f"./video/{game_id}")
+    slot = 500/interval
+    counter = 0
     while True:
-        _image_num += 1
-        str_num = "000" + str(_image_num)
-        file_name = f"./video/{game_id}/image" + str_num[-4:] + ".jpg"
+        counter+= 1
+        if counter == slot:
+            _image_num += 1
+            str_num = "000" + str(_image_num)
+            file_name = f"./video/{game_id}/image" + str_num[-4:] + ".jpg"
+            
+            pygame.image.save(screen, file_name)
+            counter = 0
         
-        pygame.image.save(screen, file_name)
-     
-        pygame.time.wait(2000)
         yield
 
 
 
-def turn(pos_, turn_id, matrix):
-    
-    player = players[turn_id]
 
-    _x, _y = move(matrix, player["x"], player["y"], pos_)
-    for p in players:
-      
-        if p["id"] != player["id"] and p["x"] == _x and p["y"] == _y:
-            # Blocked
-            message_display("Blocked..")
-            return False
-    player["x"] = _x
-    player["y"] = _y
-    return True
     
 def take_turn(_turn_id):
     _turn_id = _turn_id + 1
@@ -146,7 +111,8 @@ if __name__ == "__main__":
     import time
     game_id = int(time.time())
 
-    save_screen = make_video(screen,game_id)
+    if VIDEO:
+        save_screen = make_video(screen,game_id)
 
     # Grid has the play grid for drawing. Matrix is an indexed representation for movement purposes - entities track movement using matrix which is then translated to the grid when
     # drawing things.
@@ -163,19 +129,20 @@ if __name__ == "__main__":
         done_event = True
         # Player turn -> AI turn
         if players[turn_id]["player"]:
+            player = players[turn_id]
             total_moves += 1
-            if players[turn_id]["health"] <= 0:
-                print("Player: ", players[turn_id]["id"], " is dead. GAME OVER")
+            if player["health"] <= 0:
+                print("Player: ", player["id"], " is dead. GAME OVER")
                 sys.exit()
             if total_moves> MAX_MOVES:
                 print("Players survived.   Well done! GAME OVER")
                 sys.exit()
 
             if done_event == True:
-                text, gen_event = player_ai.inform(game_id, players[turn_id], matrix,grid, players)
+                text, gen_event = player_ga.inform(game_id, player, matrix,grid, players)
                 print(gen_event, text)
                 try:
-                    plr = players[turn_id].copy()
+                    plr = player.copy()
                     del plr["image"]
                     #asyncio.get_event_loop().run_until_complete(post_step(text,json.dumps(plr)))
                 except:
@@ -183,7 +150,7 @@ if __name__ == "__main__":
 
                 done_event = False
             
-            pygame.event.post(gen_event)
+                pygame.event.post(gen_event)
             
             # player AI generate events
             for event in pygame.event.get():
@@ -202,34 +169,31 @@ if __name__ == "__main__":
                         pos_ = 7
                     elif event.key == pygame.K_s:
                         # search
-                        Bhev.search(players[turn_id], grid, matrix)
-                        Bhev.moved(players[turn_id])
+                        ev.search(player, grid, matrix)
 
                         turn_id = take_turn(turn_id)
                     elif event.key == pygame.K_r:
                         # rest
-                        Bhev.rest(players[turn_id])
-                        Bhev.moved(players[turn_id])
+                        ev.rest(player)
 
                         turn_id = take_turn(turn_id)
                     elif event.key == pygame.K_g:
                         # grow
-                        Bhev.farm(players[turn_id], grid, matrix)
-                        Bhev.moved(players[turn_id])
+                        ev.grow(player, grid, matrix)
 
                         turn_id = take_turn(turn_id)
                     elif event.key == pygame.K_l:
-                        # look
-                        Bhev.look(players[turn_id], grid, matrix)
-                        Bhev.moved(players[turn_id])
+                        # look - work in progress
+                        # Bhev.look(players[turn_id], grid, matrix)
+                        # Bhev.moved(players[turn_id])
 
                         turn_id = take_turn(turn_id)
                     
 
             if pos_ != 0:
                 
-                if turn(pos_, turn_id, matrix):
-                    Bhev.moved(players[turn_id])
+                if en.turn(pos_, player, players, matrix):
+                    ev.move(player)
             
 
                 turn_id = take_turn(turn_id)
@@ -237,7 +201,7 @@ if __name__ == "__main__":
         else:
             # AI
             
-            
+            #rule based 'dragon'
             
             obs = ai.observe(players[turn_id], matrix, players)
             ai.orient(players[turn_id], matrix, obs)
@@ -264,5 +228,6 @@ if __name__ == "__main__":
         message_display(dt)
 
         draw_all(matrix)
-        next(save_screen)
+        if VIDEO:
+            next(save_screen)
         pygame.display.flip()

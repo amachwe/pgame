@@ -5,8 +5,7 @@ from matplotlib import pyplot as plt
 import events
 import math
 
-MAX_FOOD = 100
-MAX_HEALTH = 100
+
 
 class CategoryToOneHot(object):
     cats = {}

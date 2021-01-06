@@ -9,6 +9,7 @@ import entity
 import events
 import offline_learn_2 as ml
 import pprint
+import numpy
 import math
 
 #pygame.event.post(newevent)
@@ -21,74 +22,88 @@ collection = pymongo.MongoClient().get_database("drl").get_collection("games")
 AI = True
 actions = events.actions
 action_c = ml.CategoryToOneHot(events.action_names)
+action_t = ml.CategoryToOneHot(["hill", "grass", "water"])
 
 OBJECTIVE_COUNT = 2
 move_rate = 0.5
 
 
-def distance(xy):
-    return math.sqrt(math.pow(xy[0],2)+math.pow(xy[1],2))
 
-def evaluate(curr_health, curr_food, state, prev_action, prev_reward, eval_data):
+
+def evaluate(curr_health, curr_food, state, eval_data):
         
-    data = [curr_food/ml.MAX_FOOD,curr_health/ml.MAX_HEALTH, state/ml.MAX_STATE]
-    data.extend(action_c.to_one_hot(prev_action))
+    data = [curr_food/ml.MAX_FOOD,curr_health/ml.MAX_HEALTH, state[0]/ml.MAX_STATE]#, x, y]
     base_len = len(data)
-    
-    predicted_max_obj = list([0 for i in range(0,OBJECTIVE_COUNT)])
-    next_acts = list(["" for i in range(0,OBJECTIVE_COUNT)])
+    rewarding_acts = {}
+    max_rewarding_act = ""
+    max_reward = 0
     for act in events.action_names:
     
         data.extend(action_c.to_one_hot(act))
-        
+        data.extend(action_t.to_one_hot(state[1]))
         #evaluate possible next actions for predicted obj score
         res = model.predict([data])[0]
-
-        # align objectives against predicted for action
-        for i, m in enumerate(zip(predicted_max_obj, res)):
-            if m[0]<m[1]:
-                predicted_max_obj[i] = m[1]
-                next_acts[i] =act 
-
+        
+        
+        if max_reward < res:
+            max_reward = res
+            max_rewarding_act = act
+      
+        rewarding_acts[act] = res[0]
+        
         del data[base_len:]
+    std = numpy.std(list(rewarding_acts.values()))
+    mean = numpy.mean(list(rewarding_acts.values()))
+
+    print(rewarding_acts)
+    p_acts = []
+ 
+    for k,v in rewarding_acts.items():
+        if v >= mean:
+            p_acts.append(k)
+            
+    print(p_acts)
     
-    next_act = next_acts[0]
-    if prev_reward > predicted_max_obj[0]:
-        # predicted reward is decreasing so try other actions
-        for na in next_acts:
-            if na != prev_action:
-                next_act = na
-                break
+    selected = p_acts[random.randint(0, len(p_acts))-1]
 
-    eval_data["total_steps"] += 1
     
-    if eval_data["moves"]/eval_data["total_steps"] <= move_rate:
-        eval_data["moves"] += 1
-        next_act = events.move_actions[random.randint(0, len(events.move_actions)-1)][0]
-    return next_act
+    
+    print(f"selected act: {max_rewarding_act}, reward prob: {max_reward}, selected: {selected}")
+    return selected
 
-
-def inform(game_id, me, matrix, grid, players, player_count = 2):
+def extract_state(me, grid, matrix):
     health = me["health"]
     food = me["food"]
-    x, y = me["x"], me["y"]
-    state = entity.get_cell_state(me, matrix, grid)
+    state = entity.get_cell_data(me, matrix, grid)
+    return (health, food, state[0],state[1])
+def inform(game_id, me, matrix, grid, players, player_count = 2):
+    
     #random actions
     action_index = random.randint(0,len(actions)-1)
     action_data = actions[action_index]
-    curr_state = (health, food)
+    curr_state = extract_state(me, grid, matrix)
+    
     if len(experience) >= player_count:
                
         experience[-player_count]["new_state_health"] = curr_state[0]
         experience[-player_count]["new_state_food"] = curr_state[1]
-        experience[-player_count]["new_x"] = x
-        experience[-player_count]["new_y"] = y
-        experience[-player_count]["new_state"] = state
-        old_state = (experience[-player_count]["curr_state_health"],experience[-player_count]["curr_state_food"])
-        experience[-player_count]["reward"] = (curr_state[0]-old_state[0])+(curr_state[1]-old_state[1])
+        experience[-player_count]["new_x"] = me["x"]
+        experience[-player_count]["new_y"] = me["y"]
+        experience[-player_count]["new_state"] = curr_state[2]
+        experience[-player_count]["new_type"] = curr_state[3]
+
+        old_act = experience[-player_count]["action"]
+        x = me["x"]
+        y = me["y"]
+        old_x = experience[-player_count]["x"]
+        old_y = experience[-player_count]["y"]
+        old_state = (experience[-player_count]["curr_state_health"],experience[-player_count]["curr_state_food"],experience[-player_count]["state"])
+        rew = 4*(curr_state[0]-old_state[0])+3*(curr_state[1]-old_state[1])+(curr_state[2]-old_state[2])+0.5*(abs(x-old_x)+abs(y-old_y))
+        experience[-player_count]["reward"] = rew
         # use AI if active - otherwise persist with random
+        tile_state = (experience[-player_count]["state"],experience[-player_count]["type"])
         if AI:
-            next_act = evaluate(experience[-player_count]["curr_state_health"], experience[-player_count]["curr_state_food"],experience[-player_count]["state"], experience[-player_count]["action"], experience[-player_count]["reward"], me)
+            next_act = evaluate(experience[-player_count]["curr_state_health"], experience[-player_count]["curr_state_food"],tile_state, me)
             
             for action in actions:
                 if action[0] == next_act:
@@ -96,7 +111,7 @@ def inform(game_id, me, matrix, grid, players, player_count = 2):
                     print("Selected: ", action_data[0])
                     break
 
-        
+        experience[-player_count]["AI"] = AI
         collection.insert_one(experience[-player_count])
         
     
@@ -107,9 +122,10 @@ def inform(game_id, me, matrix, grid, players, player_count = 2):
         "curr_state_health": curr_state[0],
         "curr_state_food": curr_state[1],
         "action": action_data[0],
-        "x": x,
-        "y": y,
-        "state": state
+        "x": me["x"],
+        "y": me["y"],
+        "state": curr_state[2],
+        "type": curr_state[3]
         
     })
 

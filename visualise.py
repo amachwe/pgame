@@ -3,10 +3,10 @@ from matplotlib import pyplot as plt
 
 client = pymongo.MongoClient()
 
-GAME_ID = 1609180123# 1609175947#move=0.5,  1609175091 #1609173245 #1609171369 #1609164037 # 1609162254 mpve = 0.2, # 1609161968 move = 0.9 # 1609114921 move = 0.9 # 1609114181 move = 0.5
+GAME_ID = 1609633058#1609544526#1609180123# 1609175947#move=0.5,  1609175091 #1609173245 #1609171369 #1609164037 # 1609162254 mpve = 0.2, # 1609161968 move = 0.9 # 1609114921 move = 0.9 # 1609114181 move = 0.5
 
-q1 = {"player_id":1, "game_id": GAME_ID}
-q2 = {"player_id":2, "game_id": GAME_ID}
+q1 = {"player_id":1}#, "game_id": GAME_ID}
+q2 = {"player_id":2}#, "game_id": GAME_ID}
 
 collection = client.get_database("drl").get_collection("games")
 print("Output:")
