@@ -50,10 +50,10 @@ def act(me, matrix, players):
         if not moved:
         # attack
             
-            p_attack = 1 - (me["health"]/100)
+            p_attack = 0.9 # 1 - (me["health"]/11)
 
             if random.random() > p_attack:
-                closest["health"] = closest["health"] - random.randint(0,3)
+                closest["health"] = closest["health"] - 1
                 
             
             

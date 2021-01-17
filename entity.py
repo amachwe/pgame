@@ -148,8 +148,8 @@ knight2 = {
 dragon = {
     "id":3,
     "name": "Dragon",
-    "x": 20,
-    "y": 20,
+    "x": 14,
+    "y": 13,
     "image": dr,
     "player": False,
     "food": MAX_FOOD,

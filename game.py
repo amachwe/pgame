@@ -1,3 +1,4 @@
+from operator import le
 import pygame, sys
 import random
 import numpy as np
@@ -25,14 +26,10 @@ MAX_MOVES = 500
 
 screen = pygame.display.set_mode(size)
 
-VIDEO = True
-
-
+VIDEO = False
 
 def draw_img(im, x,y):
     screen.blit(im,(x,y))
-
-
 
 def make_video(screen,game_id, interval=100):
 
@@ -54,10 +51,6 @@ def make_video(screen,game_id, interval=100):
         
         yield
 
-
-
-
-    
 def take_turn(_turn_id):
     _turn_id = _turn_id + 1
             
@@ -65,7 +58,6 @@ def take_turn(_turn_id):
             _turn_id = 0
     
     return _turn_id
-
 
 def draw_all(matrix):
     for p in players:
@@ -111,6 +103,12 @@ if __name__ == "__main__":
     import time
     game_id = int(time.time())
 
+    with open("game_record.txt", "a+") as fh:
+        fh.write(str(game_id))
+        fh.write(", ")
+        fh.write(str(time.localtime()))
+        fh.write("\n")
+
     if VIDEO:
         save_screen = make_video(screen,game_id)
 
@@ -123,9 +121,11 @@ if __name__ == "__main__":
     pygame.draw.rect(screen, en.black, [0, screen_size[1], display_size[0], display_size[1]])
 
     total_moves = 0
+    left_moves = []
+    gen_event = None
     while pygame.time.wait(100):
         pos_=0
-
+        
         done_event = True
         # Player turn -> AI turn
         if players[turn_id]["player"]:
@@ -139,8 +139,10 @@ if __name__ == "__main__":
                 sys.exit()
 
             if done_event == True:
-                text, gen_event = player_ga.inform(game_id, player, matrix,grid, players)
-                print(gen_event, text)
+                if len(left_moves) == 0:
+                    
+                    left_moves = player_ga.inform(player, matrix,grid, players)
+                
                 try:
                     plr = player.copy()
                     del plr["image"]
@@ -149,7 +151,9 @@ if __name__ == "__main__":
                     pass
 
                 done_event = False
-            
+                act = left_moves.pop(0)
+                gen_event = ev.actions_map[act]
+                player_ga.record_data(game_id, player, matrix, grid, players, act)
                 pygame.event.post(gen_event)
             
             # player AI generate events
