@@ -11,6 +11,18 @@ import aiohttp
 import json
 import asyncio
 
+# colors
+darkgreen = pygame.colordict.THECOLORS["chartreuse4"]
+darkbrown = pygame.colordict.THECOLORS["saddlebrown"]
+black = pygame.colordict.THECOLORS["black"]
+white = pygame.colordict.THECOLORS["white"]
+sand = pygame.colordict.THECOLORS["darkgoldenrod1"]
+
+
+#images
+kn = pygame.transform.scale(pygame.image.load("kn.jpg"), (14,14))
+dr = pygame.transform.scale(pygame.image.load("dr.png"), (14,14))
+
 pygame.init()
 size = width, height = 1021, 700
 cell_size = 14
@@ -27,6 +39,8 @@ MAX_MOVES = 500
 screen = pygame.display.set_mode(size)
 
 VIDEO = False
+
+
 
 def draw_img(im, x,y):
     screen.blit(im,(x,y))
@@ -59,13 +73,13 @@ def take_turn(_turn_id):
     
     return _turn_id
 
-def draw_all(matrix):
+def draw_all(matrix, image_player_map):
     for p in players:
         mtx = matrix[p["x"]][p["y"]]
-        draw_img(p["image"],mtx[0],mtx[1])
+        draw_img(image_player_map[p["id"]],mtx[0],mtx[1])
 
 def text_objects(text, font):
-    textSurface = font.render(text, True, en.white)
+    textSurface = font.render(text, True, white)
     return textSurface, textSurface.get_rect()
 
 def turn_display(text):
@@ -118,12 +132,17 @@ if __name__ == "__main__":
 
 
     players = [en.knight1,en.knight2, en.dragon]
-    pygame.draw.rect(screen, en.black, [0, screen_size[1], display_size[0], display_size[1]])
+    player_img_map = {
+        en.knight1["id"]: kn,
+        en.knight2["id"]: kn,
+        en.dragon["id"]: dr
+    }
+    pygame.draw.rect(screen, black, [0, screen_size[1], display_size[0], display_size[1]])
 
     total_moves = 0
     left_moves = []
     gen_event = None
-    while pygame.time.wait(100):
+    while pygame.time.wait(10):
         pos_=0
         
         done_event = True
@@ -142,13 +161,6 @@ if __name__ == "__main__":
                 if len(left_moves) == 0:
                     
                     left_moves = player_ga.inform(player, matrix,grid, players)
-                
-                try:
-                    plr = player.copy()
-                    del plr["image"]
-                    #asyncio.get_event_loop().run_until_complete(post_step(text,json.dumps(plr)))
-                except:
-                    pass
 
                 done_event = False
                 act = left_moves.pop(0)
@@ -173,17 +185,17 @@ if __name__ == "__main__":
                         pos_ = 7
                     elif event.key == pygame.K_s:
                         # search
-                        ev.search(player, grid, matrix)
+                        en.Transitions.search(player, grid, matrix)
 
                         turn_id = take_turn(turn_id)
                     elif event.key == pygame.K_r:
                         # rest
-                        ev.rest(player)
+                        en.Transitions.rest(player)
 
                         turn_id = take_turn(turn_id)
                     elif event.key == pygame.K_g:
                         # grow
-                        ev.grow(player, grid, matrix)
+                        en.Transitions.grow(player, grid, matrix)
 
                         turn_id = take_turn(turn_id)
                     elif event.key == pygame.K_l:
@@ -197,7 +209,7 @@ if __name__ == "__main__":
             if pos_ != 0:
                 
                 if en.turn(pos_, player, players, matrix):
-                    ev.move(player)
+                    en.Transitions.move(player)
             
 
                 turn_id = take_turn(turn_id)
@@ -220,7 +232,7 @@ if __name__ == "__main__":
                 
                 pygame.draw.rect(screen, v["color"], v["coord"], v["filled"])
 
-        pygame.draw.rect(screen, en.black, [0, screen_size[1], display_size[0], display_size[1]])
+        pygame.draw.rect(screen, black, [0, screen_size[1], display_size[0], display_size[1]])
 
         turn_display(f"{players[turn_id]['name']}    Moves:  {total_moves}/{MAX_MOVES}")
         control_display("(S)earch, (A)ttack (R)est (G)row (L)ook")
@@ -231,7 +243,7 @@ if __name__ == "__main__":
 
         message_display(dt)
 
-        draw_all(matrix)
+        draw_all(matrix, player_img_map)
         if VIDEO:
             next(save_screen)
         pygame.display.flip()

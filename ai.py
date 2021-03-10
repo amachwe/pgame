@@ -15,7 +15,7 @@ def observe(me, matrix,players):
 
             d = math.sqrt(math.pow(x-px,2)+math.pow(y-py,2))
             if d < OBSERVE_THRESHOLD:
-                print("Found: ", p["id"])
+                #print("Found: ", p["id"])
                 observing.append((p, d))
     if observing:
         observing.sort(key=operator.itemgetter(1))
@@ -50,9 +50,9 @@ def act(me, matrix, players):
         if not moved:
         # attack
             
-            p_attack = 0.9 # 1 - (me["health"]/11)
+            p_attack = 0.35 # 1 - (me["health"]/11)
 
-            if random.random() > p_attack:
+            if random.random() < p_attack:
                 closest["health"] = closest["health"] - 1
                 
             

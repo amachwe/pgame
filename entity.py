@@ -1,15 +1,5 @@
-
-import pygame
-# colors
-darkgreen = pygame.colordict.THECOLORS["chartreuse4"]
-darkbrown = pygame.colordict.THECOLORS["saddlebrown"]
-black = pygame.colordict.THECOLORS["black"]
-white = pygame.colordict.THECOLORS["white"]
-sand = pygame.colordict.THECOLORS["darkgoldenrod1"]
-
-#images
-kn = pygame.transform.scale(pygame.image.load("kn.jpg"), (14,14))
-dr = pygame.transform.scale(pygame.image.load("dr.png"), (14,14))
+import random
+action_names = ['down', 'left', 'rest', 'right', 'up', 'search', 'grow','attack']
 
 MAX_FOOD = 10
 MAX_HEALTH = 10
@@ -25,6 +15,26 @@ def get_cell_data(entity,matrix, grid):
     data = get_cell_from_matrix(entity, matrix, grid)
 
     return (data.get("state", 0), data.get("type", ""))
+
+class Transitions(object):
+    @staticmethod
+    def search(player, grid, matrix):
+        Behavior.search(player, grid, matrix)
+        Behavior.moved(player)
+
+    @staticmethod
+    def rest(player, grid=None, matrix=None):
+        Behavior.rest(player)
+        Behavior.moved(player)
+
+    @staticmethod
+    def grow(player, grid, matrix):
+        Behavior.farm(player, grid, matrix)
+        Behavior.moved(player)
+
+    @staticmethod
+    def move(player, grid=None, matrix=None):
+        Behavior.moved(player)
 
 class Behavior(object):
 
@@ -55,7 +65,7 @@ class Behavior(object):
         cell = get_cell_from_matrix(entity, matrix, grid)
 
         if cell["type"] == "grass" and cell["state"] > 0:
-            entity["food"] = entity["food"] + 2
+            entity["food"] = entity["food"] + 2 #random.randint(0,3)
             Behavior.degrade(cell)
 
     @staticmethod
@@ -64,9 +74,13 @@ class Behavior(object):
         cell = get_cell_from_matrix(entity, matrix, grid)
         
         if cell["type"] == "grass" and cell["state"] <= cell["max_state"]:
-            cell["state"] = cell["state"] + 2
+            cell["state"] = cell["state"] + 2 #random.randint(0,3)
             if cell["state"] >= cell["max_state"]:
-                cell["color"] = darkgreen
+                cell["color"] = (69, 139, 0, 255)
+    
+    @staticmethod
+    def attack(entity, grid, matrix):
+        pass
 
     @staticmethod
     def degrade(cell):
@@ -74,7 +88,7 @@ class Behavior(object):
         if cell["type"] == "grass":
             cell["state"] = cell["state"] - 2
             if cell["state"] <= 0:
-                cell["color"] = sand
+                cell["color"] = (255, 185, 15, 255)
 def turn(pos_, player, players, matrix):
   
 
@@ -124,7 +138,6 @@ knight1 = {
     "name": "Knight",
     "x": 10,
     "y": 10,
-    "image": kn,
     "player":True,
     "food": MAX_FOOD,
     "health": MAX_HEALTH,
@@ -137,7 +150,6 @@ knight2 = {
     "name": "Knight",
     "x": 12,
     "y": 12,
-    "image": kn,
     "player":True,
     "food": MAX_FOOD,
     "health": MAX_HEALTH,
@@ -148,22 +160,21 @@ knight2 = {
 dragon = {
     "id":3,
     "name": "Dragon",
-    "x": 14,
-    "y": 13,
-    "image": dr,
+    "x": 30,
+    "y": 30,
     "player": False,
     "food": MAX_FOOD,
     "health": MAX_HEALTH
 }
 
 hill = {
-        "color": pygame.color.THECOLORS["chocolate4"], 
+        "color": (139, 69, 19, 255), 
         "filled": 0,
         "type": "hill"
     }
 
 grass = {
-        "color": pygame.color.THECOLORS["chartreuse4"], 
+        "color": (69, 139, 0, 255), 
         "filled": 0,
         "type": "grass",
         "state": 10,
@@ -172,7 +183,7 @@ grass = {
     }
 
 water = {
-        "color": pygame.color.THECOLORS["blue"], 
+        "color": (0, 0, 255, 255), 
         "filled": 0,
         "type": "water",
         "state": 10,

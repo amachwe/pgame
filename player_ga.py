@@ -1,17 +1,11 @@
-import pygame
+
 import pymongo
 import tensorflow as tf
 import random
 import time
-
 from tensorflow.python.ops.gen_math_ops import sqrt
 import entity
-import events
-import offline_learn_2 as ml
-import pprint
-import numpy
 import math
-import copy
 
 
 experience = []
@@ -20,7 +14,7 @@ experience = []
 
 collection = pymongo.MongoClient().get_database("drl").get_collection("games")
 AI = True
-actions = events.actions
+
 
 def state_value(s, a, sd, rewards, vs):
     pass
@@ -58,19 +52,18 @@ def reward(curr_state, old_state, xy, old_xy):
     
 
 def transition(me, players, grid, matrix, act):
-        _me = en_copy(me)
-        _grid = copy.deepcopy(grid)
+        
         if act == "search":
             
-            events.search(_me, _grid, matrix)
+            entity.Transitions.search(me, grid, matrix)
          
         elif act == "grow":
             
-            events.grow(_me, _grid, matrix)
+            entity.Transitions.grow(me, grid, matrix)
           
         elif act == "rest":
              
-            events.rest(_me)
+            entity.Transitions.rest(me)
             
         else:
             pos = 0
@@ -83,25 +76,24 @@ def transition(me, players, grid, matrix, act):
             else:
                 pos = 7
 
-            entity.turn(pos, _me, players, matrix)
-            events.move(_me)
+            entity.turn(pos, me, players, matrix)
+            entity.Transitions.move(me)
         
-        return (_me, _grid)
+        return (me, grid)
+
 
 def evaluate_sequence(me, players, grid, matrix, seq):
-    discount = 0.9
+    discount = 1
     total_reward = 0
     old_state = extract_state(me, grid, matrix)
     for i, s in enumerate(seq):
         out = transition(me, players, grid, matrix, s)
-        _me = out[0]
-        _grid = out[1]
-        curr_state = extract_state(_me, _grid, matrix)
+        me = out[0]
+        grid = out[1]
+        curr_state = extract_state(me, grid, matrix)
     
         _reward = reward(curr_state, old_state,curr_state[4], old_state[4])
         total_reward += math.pow(discount, i)*_reward
-        me = _me
-        grid = _grid
         old_state = curr_state
     
     return total_reward
@@ -114,7 +106,7 @@ def evaluate(me, players, grid, matrix):
     max_reward = -100000
     next_act = ""
     
-    for act in events.action_names:
+    for act in entity.action_names:
 
         _me, _grid = transition(me, players, grid, matrix, act)
         
@@ -140,38 +132,46 @@ def evaluate(me, players, grid, matrix):
 MAX_GEN = 7
 LEN = 1 #single action 
 def select_strategy(me, players, grid, matrix):
+
+
     max_rew = -100000
-    next_acts = None
+    next_acts = []
     sum = 0
-    for i in range(0,MAX_GEN):
+    rews = []
+    
+    for action in entity.action_names:
 
-        sol = [events.action_names[i]]
-        # for j in range(0, LEN):
-        #     sol.append(events.action_names[random.randint(0, len(events.action_names)-1)])
+        sol = [action]
         
-        rew = evaluate_sequence(me, players, grid, matrix, sol)
+        rew = evaluate_sequence(me.copy(), players.copy(), grid.copy(), matrix, sol)
         sum += rew
-        if max_rew < rew:
+        rews.append(rew)
+        if max_rew <= rew:
             max_rew = rew
-            next_acts = sol
-        print(rew, sol)
+            
+            
+    
+    for idx, r in enumerate(rews):
+        if r == max_rew:
+            next_acts.append(entity.action_names[idx])
 
-    print(">>", sum/MAX_GEN, next_acts,"  ", me["id"])
-    print("......\n")
-    return next_acts
+    sel = next_acts[random.randint(0, len(next_acts)-1)]
+    #print(">>", sum/MAX_GEN,"   ", next_acts,"  -->   ", sel, "    Player:", me["id"])
+    #print("......  \n")
+    return [sel]#ga.ga(entity.action_names, me, players, grid, matrix)
     
 def inform(me, matrix, grid, players):
     
     
-    action_index = random.randint(0,len(actions)-1)
-    action_data = actions[action_index]
-    next_acts = [action_data[0]]
+    action_index = random.randint(0,len(entity.action_names)-1)
+    
+    next_acts = [entity.action_names[action_index]]
     
         
     if AI:
         next_acts =  select_strategy(me, players, grid, matrix)#evaluate(me, players, grid, matrix)
             
-    return next_acts
+    return [next_acts[0]]
 
 def record_data(game_id, me, matrix, grid, players, act, player_count=2):
     curr_state = extract_state(me, grid, matrix)
@@ -184,7 +184,7 @@ def record_data(game_id, me, matrix, grid, players, act, player_count=2):
         experience[-player_count]["new_state"] = curr_state[2]
         experience[-player_count]["new_type"] = curr_state[3]
 
-        old_act = experience[-player_count]["action"]
+        
         x = me["x"]
         y = me["y"]
         old_x = experience[-player_count]["x"]
