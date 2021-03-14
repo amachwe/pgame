@@ -1,15 +1,28 @@
 import random
 import entity as en
 
+
+
 GRASS_TX = 0.01
-def build_cell(i, j, cell_size, context=None, prev=None):
+def build_cell_random_fn(i, j, cell_size, grid, prev=None):
+
+    cntx = ""
+    for t in range(i-(2*cell_size), i+(cell_size), cell_size):
+        for u in range(j-(2*cell_size), j+(cell_size), cell_size):
+        
+            r = grid.get(t)
+            if r:
+                c = r.get(u)
+                if c:
+                    if cntx == "" or cntx == "grass":
+                        cntx = c["type"]
 
     #print(context)
     if prev:
         #print(len(context))
-        if 'hill' == context and random.random() < 0.09:
+        if 'hill' == cntx and random.random() < 0.09:
             return build_hill(i, j, cell_size)
-        elif 'water' == context and random.random() < 0.09:
+        elif 'water' == cntx and random.random() < 0.09:
             return build_water(i, j, cell_size)
         
         return prev
@@ -40,9 +53,29 @@ def build_water(i, j, cell_size):
     water["coord"] = [i, j,i+cell_size+1, j+cell_size+1]
     return water
 
+def build_grid_all_grass(cell_size=14, _size=(1021,641)):
+    grid = {}
+    row = []
+    col = []
+    for i in range(0, _size[0], cell_size):
+            row.append(i)
+            _g = grid.setdefault(i, {})
+            for j in range(0, _size[1]-cell_size, cell_size):
+                col.append(j)
+                
 
-def build_grid(cell_size=14,
-_size = (1021, 641)):
+                _g[j] = build_grass(i,j,cell_size)
+        
+    matrix = []
+
+    for i, r in enumerate(row):
+        matrix.append([])
+        for j, c in enumerate(col):
+            matrix[i].append((r,c))
+    
+    return grid, matrix
+
+def build_grid_recur(cell_size=14,_size = (1021, 641)):
     
     grid = {}
     row = []
@@ -53,22 +86,13 @@ _size = (1021, 641)):
             _g = grid.setdefault(i, {})
             for j in range(0, _size[1]-cell_size, cell_size):
                 col.append(j)
-                cntx = ""
-                for t in range(i-(2*cell_size), i+(cell_size), cell_size):
-                    for u in range(j-(2*cell_size), j+(cell_size), cell_size):
-                    
-                        r = grid.get(t)
-                        if r:
-                            c = r.get(u)
-                            if c:
-                                if cntx == "" or cntx == "grass":
-                                    cntx = c["type"]
+                
                 curr_cell = None
                 r = grid.get(i)
                 if r:
                     curr_cell = r.get(j)
 
-                _g[j] = build_cell(i,j, cell_size,context=cntx, prev = curr_cell)
+                _g[j] = build_cell_random_fn(i,j, cell_size, grid, prev = curr_cell)
         
     matrix = []
 

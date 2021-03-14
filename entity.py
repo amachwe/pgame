@@ -36,6 +36,12 @@ class Transitions(object):
     def move(player, grid=None, matrix=None):
         Behavior.moved(player)
 
+    @staticmethod
+    def attack(player, players, grid=None, matrix=None):
+        Behavior.attack(player,players)
+        Behavior.moved(player)
+
+
 class Behavior(object):
 
     @staticmethod
@@ -79,8 +85,13 @@ class Behavior(object):
                 cell["color"] = (69, 139, 0, 255)
     
     @staticmethod
-    def attack(entity, grid, matrix):
-        pass
+    def attack(entity, entities):
+        for e in entities:
+            if not e["player"] and e != entity:
+                if abs(e["x"]-entity["x"])<=1 and abs(e["y"]-entity["y"])<=1 and e["health"] > 0:
+                    e["health"] = e["health"] -1
+                    print(e["name"], " attacked by ",entity["id"])
+
 
     @staticmethod
     def degrade(cell):
@@ -142,7 +153,8 @@ knight1 = {
     "food": MAX_FOOD,
     "health": MAX_HEALTH,
     "moves": 0,
-    "total_steps": 0
+    "total_steps": 0,
+    "show": True
 }
 
 knight2 = {
@@ -154,17 +166,19 @@ knight2 = {
     "food": MAX_FOOD,
     "health": MAX_HEALTH,
     "moves": 0,
-    "total_steps": 0
+    "total_steps": 0,
+    "show": True
 }
 
 dragon = {
     "id":3,
     "name": "Dragon",
-    "x": 30,
-    "y": 30,
+    "x": 15,
+    "y": 15,
     "player": False,
     "food": MAX_FOOD,
-    "health": MAX_HEALTH
+    "health": MAX_HEALTH + 20,
+    "show": True
 }
 
 hill = {

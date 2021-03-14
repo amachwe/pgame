@@ -1,15 +1,13 @@
 from operator import le
 import pygame, sys
-import random
-import numpy as np
 import entity as en
 import events as ev
 import build as bl
 import ai 
 import player_ga
 import aiohttp
-import json
-import asyncio
+import exp_writer as exp
+
 
 # colors
 darkgreen = pygame.colordict.THECOLORS["chartreuse4"]
@@ -73,10 +71,11 @@ def take_turn(_turn_id):
     
     return _turn_id
 
-def draw_all(matrix, image_player_map):
+def draw_all(matrix, image_player_map, players):
     for p in players:
-        mtx = matrix[p["x"]][p["y"]]
-        draw_img(image_player_map[p["id"]],mtx[0],mtx[1])
+        if p["show"]:
+            mtx = matrix[p["x"]][p["y"]]
+            draw_img(image_player_map[p["id"]],mtx[0],mtx[1])
 
 def text_objects(text, font):
     textSurface = font.render(text, True, white)
@@ -103,6 +102,8 @@ def control_display(text):
     screen.blit(TextSurf, TextRect)
     pygame.display.update()
 
+
+
 async def post_step(step, player):
     
     async with aiohttp.ClientSession() as sess:
@@ -113,7 +114,7 @@ pos_ = 0
 turn_id = 0
 
 if __name__ == "__main__":
-
+    experience = []
     import time
     game_id = int(time.time())
 
@@ -128,7 +129,7 @@ if __name__ == "__main__":
 
     # Grid has the play grid for drawing. Matrix is an indexed representation for movement purposes - entities track movement using matrix which is then translated to the grid when
     # drawing things.
-    grid, matrix = bl.build_grid(cell_size, screen_size)
+    grid, matrix = bl.build_grid_all_grass(cell_size, screen_size)
 
 
     players = [en.knight1,en.knight2, en.dragon]
@@ -165,7 +166,7 @@ if __name__ == "__main__":
                 done_event = False
                 act = left_moves.pop(0)
                 gen_event = ev.actions_map[act]
-                player_ga.record_data(game_id, player, matrix, grid, players, act)
+                exp.record_data(experience, player_ga.extract_state(player, players, grid, matrix),game_id, player, act)
                 pygame.event.post(gen_event)
             
             # player AI generate events
@@ -204,6 +205,11 @@ if __name__ == "__main__":
                         # Bhev.moved(players[turn_id])
 
                         turn_id = take_turn(turn_id)
+                    elif event.key == pygame.K_a:
+                        # attack
+                        en.Transitions.attack(player, players)
+                        turn_id = take_turn(turn_id)
+
                     
 
             if pos_ != 0:
@@ -218,11 +224,15 @@ if __name__ == "__main__":
             # AI
             
             #rule based 'dragon'
-            
-            obs = ai.observe(players[turn_id], matrix, players)
-            ai.orient(players[turn_id], matrix, obs)
-            ai.decide(players[turn_id], matrix, obs)
-            ai.act(players[turn_id], matrix, obs)
+            dragon = players[turn_id]
+            if dragon["health"] > 0:
+                obs = ai.observe(dragon, matrix, players)
+                ai.orient(dragon, matrix, obs)
+                ai.decide(dragon, matrix, obs)
+                if obs:
+                    ai.act(dragon, matrix, obs[0]) #obs[0] is the closest entity
+            else:
+                dragon["show"] = False
 
             turn_id = take_turn(turn_id)
 
@@ -243,7 +253,7 @@ if __name__ == "__main__":
 
         message_display(dt)
 
-        draw_all(matrix, player_img_map)
+        draw_all(matrix, player_img_map, players)
         if VIDEO:
             next(save_screen)
         pygame.display.flip()

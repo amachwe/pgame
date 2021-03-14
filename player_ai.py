@@ -52,7 +52,7 @@ def evaluate(curr_health, curr_food, state, eval_data):
         rewarding_acts[act] = res[0]
         
         del data[base_len:]
-    std = numpy.std(list(rewarding_acts.values()))
+    
     mean = numpy.mean(list(rewarding_acts.values()))
 
     print(rewarding_acts)
@@ -71,17 +71,19 @@ def evaluate(curr_health, curr_food, state, eval_data):
     print(f"selected act: {max_rewarding_act}, reward prob: {max_reward}, selected: {selected}")
     return selected
 
-def extract_state(me, grid, matrix):
+def extract_state(me, players, grid, matrix):
     health = me["health"]
     food = me["food"]
+    enemy = list(filter(lambda x: True if x["name"]=="Dragon" else False, players))
+    enemy_health = enemy[0]["health"]
     state = entity.get_cell_data(me, matrix, grid)
-    return (health, food, state[0],state[1])
+    return (health, food, state[0],state[1], enemy_health)
 def inform(game_id, me, matrix, grid, players, player_count = 2):
     
     #random actions
     action_index = random.randint(0,len(actions)-1)
     action_data = actions[action_index]
-    curr_state = extract_state(me, grid, matrix)
+    curr_state = extract_state(me, players, grid, matrix)
     
     if len(experience) >= player_count:
                
@@ -91,6 +93,7 @@ def inform(game_id, me, matrix, grid, players, player_count = 2):
         experience[-player_count]["new_y"] = me["y"]
         experience[-player_count]["new_state"] = curr_state[2]
         experience[-player_count]["new_type"] = curr_state[3]
+        experience[-player_count]["dragon_health"] = curr_state[4]
 
         old_act = experience[-player_count]["action"]
         x = me["x"]

@@ -1,6 +1,6 @@
 import math
 import operator
-import random
+import numpy as np
 
 
 #Memory:
@@ -29,11 +29,10 @@ def orient(me, matrix, players):
 def decide(me, matrix, players):
     pass
 
-def act(me, matrix, players):
+def act(me, matrix, closest, p_attack=0.5):
     #move towards closest
     moved = False
-    if players:
-        closest = players[0]
+    if closest:
 
         xc, yc = closest["x"], closest["y"]
 
@@ -50,10 +49,44 @@ def act(me, matrix, players):
         if not moved:
         # attack
             
-            p_attack = 0.35 # 1 - (me["health"]/11)
+            p_attack = 0.5 # 1 - (me["health"]/11)
 
-            if random.random() < p_attack:
+            if attack(p_attack):
                 closest["health"] = closest["health"] - 1
+
+def attack(p_attack, loc=0.5):
+    return np.random.normal(loc) < p_attack
+
+
+if __name__ == "__main__":
+
+    p = 0.0
+    MAX_YES = 0
+    MIN_YES = 1000
+    PL = None
+    PLM = None
+    while p < 1:
+        l = 0.0
+        while l<1:
+            yes = 0
+            
+            for k in range(0,100):
+                if attack(p):
+                    yes += 1
+                
+            print(round(p,2), round(l,2), "  Y:",yes,"   N:",100-yes)
+            if MAX_YES < yes:
+                MAX_YES = yes
+                PL = (p,l)
+            if MIN_YES > yes:
+                MIN_YES = yes
+                PLM = (p,l)
+            l = l+0.1
+        p = p+0.1
+
+    print(MAX_YES, PL)
+    print(MIN_YES, PLM)
+
                 
             
             

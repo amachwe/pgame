@@ -1,18 +1,8 @@
 
-import pymongo
-import tensorflow as tf
 import random
-import time
-from tensorflow.python.ops.gen_math_ops import sqrt
 import entity
 import math
 
-
-experience = []
-
-
-
-collection = pymongo.MongoClient().get_database("drl").get_collection("games")
 AI = True
 
 
@@ -20,12 +10,14 @@ def state_value(s, a, sd, rewards, vs):
     pass
     
     
-def extract_state(me, grid, matrix):
+def extract_state(me, players,grid, matrix):
     health = me["health"]
     food = me["food"]
     state = entity.get_cell_data(me, matrix, grid)
+    enemy = list(filter(lambda x: True if x["name"]=="Dragon" else False, players))
+    enemy_health = enemy[0]["health"]
     # return health, food, cell state, cell type
-    return (health, food, state[0],state[1], (me["x"], me["y"]))
+    return (health, food, state[0],state[1], (me["x"], me["y"]), enemy_health)
 
 
 def en_copy(et):
@@ -47,8 +39,9 @@ def is_same(et1, et2):
         
 def reward(curr_state, old_state, xy, old_xy):
     
-    #Health, Food, Cell_Food, Movement
-    return 6*(curr_state[0]-old_state[0])+4*(curr_state[1]-old_state[1])+(curr_state[2]-old_state[2])+((abs(xy[0]-old_xy[0])+abs(xy[1]-old_xy[1])))
+    #Health, Food, Cell_Food, Movement Enemy Health
+    
+    return 6*(curr_state[0]-old_state[0])+4*(curr_state[1]-old_state[1])+(curr_state[2]-old_state[2])+((abs(xy[0]-old_xy[0])+abs(xy[1]-old_xy[1])))+6*(old_state[5]-curr_state[5])
     
 
 def transition(me, players, grid, matrix, act):
@@ -64,6 +57,9 @@ def transition(me, players, grid, matrix, act):
         elif act == "rest":
              
             entity.Transitions.rest(me)
+        
+        elif act == "attack":
+            entity.Transitions.attack(me, players)
             
         else:
             pos = 0
@@ -79,19 +75,19 @@ def transition(me, players, grid, matrix, act):
             entity.turn(pos, me, players, matrix)
             entity.Transitions.move(me)
         
-        return (me, grid)
+        return (me, grid, players)
 
 
 def evaluate_sequence(me, players, grid, matrix, seq):
     discount = 1
     total_reward = 0
-    old_state = extract_state(me, grid, matrix)
+    old_state = extract_state(me, players, grid, matrix)
     for i, s in enumerate(seq):
         out = transition(me, players, grid, matrix, s)
         me = out[0]
         grid = out[1]
-        curr_state = extract_state(me, grid, matrix)
-    
+        curr_state = extract_state(me, out[2], grid, matrix)
+
         _reward = reward(curr_state, old_state,curr_state[4], old_state[4])
         total_reward += math.pow(discount, i)*_reward
         old_state = curr_state
@@ -100,7 +96,7 @@ def evaluate_sequence(me, players, grid, matrix, seq):
 
 def evaluate(me, players, grid, matrix):
     
-    old_state = extract_state(me, grid, matrix)
+    old_state = extract_state(me, players,grid, matrix)
 
     act_reward = {}
     max_reward = -100000
@@ -108,9 +104,9 @@ def evaluate(me, players, grid, matrix):
     
     for act in entity.action_names:
 
-        _me, _grid = transition(me, players, grid, matrix, act)
+        _me, _grid, _players = transition(me, players, grid, matrix, act)
         
-        curr_state = extract_state(_me, _grid, matrix)
+        curr_state = extract_state(_me, _players, _grid, matrix)
     
         _reward = reward(curr_state, old_state,curr_state[4], old_state[4])
         if is_same(_me, me):
@@ -173,45 +169,3 @@ def inform(me, matrix, grid, players):
             
     return [next_acts[0]]
 
-def record_data(game_id, me, matrix, grid, players, act, player_count=2):
-    curr_state = extract_state(me, grid, matrix)
-    if len(experience) >= player_count:
-               
-        experience[-player_count]["new_state_health"] = curr_state[0]
-        experience[-player_count]["new_state_food"] = curr_state[1]
-        experience[-player_count]["new_x"] = me["x"]
-        experience[-player_count]["new_y"] = me["y"]
-        experience[-player_count]["new_state"] = curr_state[2]
-        experience[-player_count]["new_type"] = curr_state[3]
-
-        
-        x = me["x"]
-        y = me["y"]
-        old_x = experience[-player_count]["x"]
-        old_y = experience[-player_count]["y"]
-
-        old_state = (experience[-player_count]["curr_state_health"],experience[-player_count]["curr_state_food"],experience[-player_count]["state"])
-        
-        experience[-player_count]["reward"] = reward(curr_state, old_state, (x,y),(old_x,old_y))
-        # use AI if active - otherwise persist with random
-        tile_state = (experience[-player_count]["state"],experience[-player_count]["type"])
-    
-        experience[-player_count]["AI"] = AI
-        collection.insert_one(experience[-player_count])
-    
-    
-
-
-    experience.append({
-        "player_id":me["id"],
-        "game_id":game_id,
-        "time":time.time(),
-        "curr_state_health": curr_state[0],
-        "curr_state_food": curr_state[1],
-        "action": act,
-        "x": me["x"],
-        "y": me["y"],
-        "state": curr_state[2],
-        "type": curr_state[3]
-        
-    })
