@@ -1,5 +1,6 @@
 import random
 import entity as en
+import numpy as np
 
 
 
@@ -53,55 +54,57 @@ def build_water(i, j, cell_size):
     water["coord"] = [i, j,i+cell_size+1, j+cell_size+1]
     return water
 
-def build_grid_all_grass(cell_size=14, _size=(1021,641)):
+def build_grid_all_grass(cell_size, _size):
     grid = {}
-    row = []
-    col = []
+    rc = np.empty((int(_size[0]/cell_size),int(_size[1]/cell_size)),dtype=np.object)
+    r = 0
+    c = 0
     for i in range(0, _size[0], cell_size):
-            row.append(i)
+            
             _g = grid.setdefault(i, {})
-            for j in range(0, _size[1]-cell_size, cell_size):
-                col.append(j)
-                
-
-                _g[j] = build_grass(i,j,cell_size)
-        
-    matrix = []
-
-    for i, r in enumerate(row):
-        matrix.append([])
-        for j, c in enumerate(col):
-            matrix[i].append((r,c))
-    
-    return grid, matrix
-
-def build_grid_recur(cell_size=14,_size = (1021, 641)):
-    
-    grid = {}
-    row = []
-    col = []
-    for s in range(0, 7):
-        for i in range(0, _size[0], cell_size):
-            row.append(i)
-            _g = grid.setdefault(i, {})
-            for j in range(0, _size[1]-cell_size, cell_size):
-                col.append(j)
+            for j in range(0, _size[1], cell_size):
+                rc[r,c] = (i,j)
                 
                 curr_cell = None
-                r = grid.get(i)
+                _r = grid.get(i)
                 if r:
-                    curr_cell = r.get(j)
+                    curr_cell = _r.get(j)
+
+                _g[j] = build_grass(i,j, cell_size)
+                c = c+1
+            r = r+1
+            c = 0
+        
+    
+    return grid, rc
+            
+   
+
+def build_grid_recur(cell_size,_size):
+    
+    grid = {}
+    rc = np.empty((int(_size[0]/cell_size),int(_size[1]/cell_size)),dtype=np.object)
+    r = 0
+    c = 0
+    for s in range(0, 7):
+        for i in range(0, _size[0], cell_size):
+            
+            _g = grid.setdefault(i, {})
+            for j in range(0, _size[1], cell_size):
+                rc[r,c] = (i,j)
+                
+                curr_cell = None
+                _r = grid.get(i)
+                if r:
+                    curr_cell = _r.get(j)
 
                 _g[j] = build_cell_random_fn(i,j, cell_size, grid, prev = curr_cell)
+                c = c+1
+            r = r+1
+            c = 0
         
-    matrix = []
-
-    for i, r in enumerate(row):
-        matrix.append([])
-        for j, c in enumerate(col):
-            matrix[i].append((r,c))
     
-    return grid, matrix
+    return grid, rc
             
 
 

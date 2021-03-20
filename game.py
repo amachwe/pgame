@@ -5,6 +5,7 @@ import events as ev
 import build as bl
 import ai 
 import player_ga
+import rl1
 import aiohttp
 import exp_writer as exp
 
@@ -22,9 +23,10 @@ kn = pygame.transform.scale(pygame.image.load("kn.jpg"), (14,14))
 dr = pygame.transform.scale(pygame.image.load("dr.png"), (14,14))
 
 pygame.init()
-size = width, height = 1021, 700
+
 cell_size = 14
-screen_size = 1021, 641
+size = width, height = 10*cell_size, 10*cell_size
+screen_size = 301, 201
 display_size = 1021, 700-screen_size[1]
 
 clock = pygame.time.Clock()
@@ -32,11 +34,12 @@ clock = pygame.time.Clock()
 speed = [2, 2]
 black = 0, 0, 0
 
-MAX_MOVES = 500
+MAX_MOVES = 1000
 
 screen = pygame.display.set_mode(size)
 
 VIDEO = False
+DRAW = True
 
 
 
@@ -110,6 +113,8 @@ async def post_step(step, player):
         async with sess.post(f"http://localhost:8080/event/{player}/{step}") as response:
             pass
 
+def record(game_id, turn_id, player, players, grid, matrix):
+    print(game_id, turn_id, player["id"],en.extract_state(player, players, grid, matrix))
 pos_ = 0
 turn_id = 0
 
@@ -129,7 +134,7 @@ if __name__ == "__main__":
 
     # Grid has the play grid for drawing. Matrix is an indexed representation for movement purposes - entities track movement using matrix which is then translated to the grid when
     # drawing things.
-    grid, matrix = bl.build_grid_all_grass(cell_size, screen_size)
+    grid, matrix = bl.build_grid_all_grass(cell_size, size)
 
 
     players = [en.knight1,en.knight2, en.dragon]
@@ -145,28 +150,36 @@ if __name__ == "__main__":
     gen_event = None
     while pygame.time.wait(10):
         pos_=0
-        
+        player = players[turn_id]
         done_event = True
+        total_moves += 1
         # Player turn -> AI turn
-        if players[turn_id]["player"]:
-            player = players[turn_id]
-            total_moves += 1
+        if player["player"]:
+            
+            
             if player["health"] <= 0:
+                
+                record(game_id, total_moves, player, players, grid, matrix)
                 print("Player: ", player["id"], " is dead. GAME OVER")
+                exp.record_data(experience, en.extract_state(player, players, grid, matrix),game_id, player, total_moves)
                 sys.exit()
             if total_moves> MAX_MOVES:
+                
+                record(game_id, total_moves, player, players, grid, matrix)
                 print("Players survived.   Well done! GAME OVER")
+                exp.record_data(experience, en.extract_state(player, players, grid, matrix),game_id, player, total_moves)
                 sys.exit()
 
             if done_event == True:
                 if len(left_moves) == 0:
                     
-                    left_moves = player_ga.inform(player, matrix,grid, players)
+                    left_moves = rl1.inform(player,players, matrix,grid)
 
                 done_event = False
                 act = left_moves.pop(0)
                 gen_event = ev.actions_map[act]
-                exp.record_data(experience, player_ga.extract_state(player, players, grid, matrix),game_id, player, act)
+                exp.record_data(experience, en.extract_state(player, players, grid, matrix),game_id, player, total_moves, act)
+                
                 pygame.event.post(gen_event)
             
             # player AI generate events
@@ -224,36 +237,38 @@ if __name__ == "__main__":
             # AI
             
             #rule based 'dragon'
-            dragon = players[turn_id]
+            dragon = player
             if dragon["health"] > 0:
                 obs = ai.observe(dragon, matrix, players)
                 ai.orient(dragon, matrix, obs)
                 ai.decide(dragon, matrix, obs)
                 if obs:
                     ai.act(dragon, matrix, obs[0]) #obs[0] is the closest entity
+                exp.record_data(experience, en.extract_state(dragon, players, grid, matrix),game_id, dragon, total_moves)
             else:
                 dragon["show"] = False
 
             turn_id = take_turn(turn_id)
-
+        record(game_id, total_moves, player, players, grid, matrix)
+        if DRAW:
         # Groom world Draw
-        for i in grid.keys():
-            for k,v in grid[i].items():
-                
-                pygame.draw.rect(screen, v["color"], v["coord"], v["filled"])
+            for i in grid.keys():
+                for k,v in grid[i].items():
+                    
+                    pygame.draw.rect(screen, v["color"], v["coord"], v["filled"])
 
-        pygame.draw.rect(screen, black, [0, screen_size[1], display_size[0], display_size[1]])
+            pygame.draw.rect(screen, black, [0, screen_size[1], display_size[0], display_size[1]])
 
-        turn_display(f"{players[turn_id]['name']}    Moves:  {total_moves}/{MAX_MOVES}")
-        control_display("(S)earch, (A)ttack (R)est (G)row (L)ook")
+            turn_display(f"{players[turn_id]['name']}    Moves:  {total_moves}/{MAX_MOVES}")
+            control_display("(S)earch, (A)ttack (R)est (G)row (L)ook")
 
-        dt = ""
-        for p in players:
-            dt = dt + f"{p['name']}: {p['food']}/{p['health']}    "
+            dt = ""
+            for p in players:
+                dt = dt + f"{p['name']}: {p['food']}/{p['health']}    "
 
-        message_display(dt)
+            message_display(dt)
 
-        draw_all(matrix, player_img_map, players)
-        if VIDEO:
-            next(save_screen)
-        pygame.display.flip()
+            draw_all(matrix, player_img_map, players)
+            if VIDEO:
+                next(save_screen)
+            pygame.display.flip()

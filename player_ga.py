@@ -10,14 +10,7 @@ def state_value(s, a, sd, rewards, vs):
     pass
     
     
-def extract_state(me, players,grid, matrix):
-    health = me["health"]
-    food = me["food"]
-    state = entity.get_cell_data(me, matrix, grid)
-    enemy = list(filter(lambda x: True if x["name"]=="Dragon" else False, players))
-    enemy_health = enemy[0]["health"]
-    # return health, food, cell state, cell type
-    return (health, food, state[0],state[1], (me["x"], me["y"]), enemy_health)
+
 
 
 def en_copy(et):
@@ -81,12 +74,12 @@ def transition(me, players, grid, matrix, act):
 def evaluate_sequence(me, players, grid, matrix, seq):
     discount = 1
     total_reward = 0
-    old_state = extract_state(me, players, grid, matrix)
+    old_state = entity.extract_state(me, players, grid, matrix)
     for i, s in enumerate(seq):
         out = transition(me, players, grid, matrix, s)
         me = out[0]
         grid = out[1]
-        curr_state = extract_state(me, out[2], grid, matrix)
+        curr_state = entity.extract_state(me, out[2], grid, matrix)
 
         _reward = reward(curr_state, old_state,curr_state[4], old_state[4])
         total_reward += math.pow(discount, i)*_reward
@@ -96,7 +89,7 @@ def evaluate_sequence(me, players, grid, matrix, seq):
 
 def evaluate(me, players, grid, matrix):
     
-    old_state = extract_state(me, players,grid, matrix)
+    old_state = entity.extract_state(me, players,grid, matrix)
 
     act_reward = {}
     max_reward = -100000
@@ -106,7 +99,7 @@ def evaluate(me, players, grid, matrix):
 
         _me, _grid, _players = transition(me, players, grid, matrix, act)
         
-        curr_state = extract_state(_me, _players, _grid, matrix)
+        curr_state = entity.extract_state(_me, _players, _grid, matrix)
     
         _reward = reward(curr_state, old_state,curr_state[4], old_state[4])
         if is_same(_me, me):
@@ -156,7 +149,7 @@ def select_strategy(me, players, grid, matrix):
     #print("......  \n")
     return [sel]#ga.ga(entity.action_names, me, players, grid, matrix)
     
-def inform(me, matrix, grid, players):
+def inform(me, players, matrix, grid):
     
     
     action_index = random.randint(0,len(entity.action_names)-1)

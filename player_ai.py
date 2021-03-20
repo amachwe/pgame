@@ -71,19 +71,12 @@ def evaluate(curr_health, curr_food, state, eval_data):
     print(f"selected act: {max_rewarding_act}, reward prob: {max_reward}, selected: {selected}")
     return selected
 
-def extract_state(me, players, grid, matrix):
-    health = me["health"]
-    food = me["food"]
-    enemy = list(filter(lambda x: True if x["name"]=="Dragon" else False, players))
-    enemy_health = enemy[0]["health"]
-    state = entity.get_cell_data(me, matrix, grid)
-    return (health, food, state[0],state[1], enemy_health)
 def inform(game_id, me, matrix, grid, players, player_count = 2):
     
     #random actions
     action_index = random.randint(0,len(actions)-1)
     action_data = actions[action_index]
-    curr_state = extract_state(me, players, grid, matrix)
+    curr_state = entity.extract_state(me, players, grid, matrix)
     
     if len(experience) >= player_count:
                

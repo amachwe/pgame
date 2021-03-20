@@ -3,7 +3,7 @@ import time
 
 collection = pymongo.MongoClient().get_database("drl").get_collection("games")
 
-def record_data(experience, curr_state, game_id, me, act, player_count=2, AI=True):
+def record_data(experience, curr_state, game_id, me, total_moves, act="", player_count=2, AI=True):
     
     if len(experience) >= player_count:
                
@@ -27,6 +27,7 @@ def record_data(experience, curr_state, game_id, me, act, player_count=2, AI=Tru
 
 
     experience.append({
+        "move_id":total_moves,
         "player_id":me["id"],
         "game_id":game_id,
         "time":time.time(),

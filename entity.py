@@ -5,8 +5,12 @@ MAX_FOOD = 10
 MAX_HEALTH = 10
 
 def get_cell_from_matrix(entity, matrix, grid):
-    mtx = matrix[entity["x"]][entity["y"]]
-    return grid[mtx[0]][mtx[1]]
+    try:
+        mtx = matrix[entity["x"]][entity["y"]]
+        return grid[mtx[0]][mtx[1]]
+    except:
+        print("",entity["x"],entity["y"])
+        raise Exception()
 
 def get_cell_state(entity,matrix, grid):
     return get_cell_from_matrix(entity, matrix, grid).get("state", 0)
@@ -117,23 +121,24 @@ def turn(pos_, player, players, matrix):
 def move(matrix, x,y, slot):
     _x = x
     _y = y
-    if slot == 1:
+    if slot == 1 and y > 0:
         _y = y-1
+        
         
     # elif slot == 2:
     #     _x = x-1
     #     _y = y-1
-    elif slot == 3:
+    elif slot == 3 and x < matrix.shape[0]-1:
         _x = x+1
     # elif slot == 4:
     #     _x = x+1
     #     _y = y+1
-    elif slot == 5:
+    elif slot == 5 and y < matrix.shape[1]-1:
         _y = y+1
     # elif slot == 6:
     #     _y = y-1
     #     _x = x+1
-    elif slot == 7:
+    elif slot == 7 and x > 0:
         _x = x-1
     # elif slot == 8:
     #     _y = y-1
@@ -142,13 +147,21 @@ def move(matrix, x,y, slot):
 
     return _x,_y
 
+def extract_state(me, players,grid, matrix):
+    health = me["health"]
+    food = me["food"]
+    state = get_cell_data(me, matrix, grid)
+    enemy = list(filter(lambda x: True if x["name"]=="Dragon" else False, players))
+    enemy_health = enemy[0]["health"]
+    # return health, food, cell type, cell state , location, dragon health
+    return (health, food, state[0],state[1], (me["x"], me["y"]), enemy_health)
 
 #entity
 knight1 = {
     "id": 1,
     "name": "Knight",
-    "x": 10,
-    "y": 10,
+    "x": 1,
+    "y": 1,
     "player":True,
     "food": MAX_FOOD,
     "health": MAX_HEALTH,
@@ -160,8 +173,8 @@ knight1 = {
 knight2 = {
     "id": 2,
     "name": "Knight",
-    "x": 12,
-    "y": 12,
+    "x": 5,
+    "y": 5,
     "player":True,
     "food": MAX_FOOD,
     "health": MAX_HEALTH,
@@ -173,11 +186,11 @@ knight2 = {
 dragon = {
     "id":3,
     "name": "Dragon",
-    "x": 15,
-    "y": 15,
+    "x": 9,
+    "y": 9,
     "player": False,
     "food": MAX_FOOD,
-    "health": MAX_HEALTH + 20,
+    "health": MAX_HEALTH+20,
     "show": True
 }
 
