@@ -1,9 +1,11 @@
 import pymongo
 import time
 
-collection = pymongo.MongoClient().get_database("drl").get_collection("games")
+exp_collection = pymongo.MongoClient().get_database("drl").get_collection("games")
+game_data_coll = pymongo.MongoClient().get_database("drl").get_collection("game_data")
 
-def record_data(experience, curr_state, game_id, me, total_moves, act="", player_count=2, AI=True):
+def record_data(experience, curr_state, game_id, me, total_moves, act="", player_count=3, AI=True):
+    
     
     if len(experience) >= player_count:
                
@@ -21,7 +23,7 @@ def record_data(experience, curr_state, game_id, me, total_moves, act="", player
         
     
         experience[-player_count]["AI"] = AI
-        collection.insert_one(experience[-player_count])
+        exp_collection.insert_one(experience[-player_count])
     
     
 
@@ -41,3 +43,7 @@ def record_data(experience, curr_state, game_id, me, total_moves, act="", player
         "dragon_health": curr_state[5]
         
     })
+
+def write_game_data(game_data):
+
+    game_data_coll.insert_one(game_data)

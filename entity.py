@@ -153,7 +153,7 @@ def extract_state(me, players,grid, matrix):
     state = get_cell_data(me, matrix, grid)
     enemy = list(filter(lambda x: True if x["name"]=="Dragon" else False, players))
     enemy_health = enemy[0]["health"]
-    # return health, food, cell type, cell state , location, dragon health
+    # return health, food,  cell state , cell type, location, dragon health
     return (health, food, state[0],state[1], (me["x"], me["y"]), enemy_health)
 
 #entity

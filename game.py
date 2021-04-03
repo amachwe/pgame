@@ -5,6 +5,8 @@ import events as ev
 import build as bl
 import ai 
 import player_ga
+import random_agent
+import time
 import rl1
 import aiohttp
 import exp_writer as exp
@@ -34,7 +36,7 @@ clock = pygame.time.Clock()
 speed = [2, 2]
 black = 0, 0, 0
 
-MAX_MOVES = 1000
+MAX_MOVES = 500
 
 screen = pygame.display.set_mode(size)
 
@@ -120,7 +122,10 @@ turn_id = 0
 
 if __name__ == "__main__":
     experience = []
-    import time
+    run_id = 0
+    if len(sys.argv)>1:
+        run_id = sys.argv[1]
+    
     game_id = int(time.time())
 
     with open("game_record.txt", "a+") as fh:
@@ -146,6 +151,7 @@ if __name__ == "__main__":
     pygame.draw.rect(screen, black, [0, screen_size[1], display_size[0], display_size[1]])
 
     total_moves = 0
+    explored = 0
     left_moves = []
     gen_event = None
     while pygame.time.wait(10):
@@ -156,38 +162,41 @@ if __name__ == "__main__":
         # Player turn -> AI turn
         if player["player"]:
             
-            
             if player["health"] <= 0:
                 
                 record(game_id, total_moves, player, players, grid, matrix)
                 print("Player: ", player["id"], " is dead. GAME OVER")
                 exp.record_data(experience, en.extract_state(player, players, grid, matrix),game_id, player, total_moves)
+                exp.write_game_data({"_id":game_id,"run_id": run_id, "total_moves":total_moves,"explored":explored})
                 sys.exit()
+
             if total_moves> MAX_MOVES:
                 
                 record(game_id, total_moves, player, players, grid, matrix)
                 print("Players survived.   Well done! GAME OVER")
                 exp.record_data(experience, en.extract_state(player, players, grid, matrix),game_id, player, total_moves)
+                exp.write_game_data({"_id":game_id,"run_id": run_id, "total_moves":total_moves,"explored":explored})
                 sys.exit()
 
             if done_event == True:
                 if len(left_moves) == 0:
                     
-                    left_moves = rl1.inform(player,players, matrix,grid)
-
+                    left_moves,explrd = rl1.inform(player,players, matrix,grid)
+                explored += explrd
                 done_event = False
                 act = left_moves.pop(0)
-                gen_event = ev.actions_map[act]
-                exp.record_data(experience, en.extract_state(player, players, grid, matrix),game_id, player, total_moves, act)
-                
-                pygame.event.post(gen_event)
+                if act:
+                    gen_event = ev.actions_map[act]
+                    exp.record_data(experience, en.extract_state(player, players, grid, matrix),game_id, player, total_moves, act)
+                    
+                    pygame.event.post(gen_event)
             
             # player AI generate events
             for event in pygame.event.get():
                 if gen_event == event:
                     done_event == True
                     
-                if event.type == pygame.QUIT: sys.exit()
+                if event.type == pygame.QUIT: sys.exit(0)
                 elif event.type == pygame.KEYDOWN: 
                     if event.key == pygame.K_DOWN:
                         pos_ = 5
